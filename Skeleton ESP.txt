@@ -1,0 +1,274 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+--------------------------------------------------
+-- CONFIGURATION
+--------------------------------------------------
+
+local SKELETON_CONFIG = {
+	Color = Color3.fromRGB(255, 255, 255),
+	MaxDistance = 1500,     -- Hide skeleton completely past this distance
+	FarDistance = 300,      -- Stagger/half-rate update frames past this distance
+	OffscreenMargin = 250,  -- Bounding padding before culling offscreen renders
+	BaseThickness = 1.5,
+}
+
+--------------------------------------------------
+-- RIG STRUCTURE DEFINITIONS
+--------------------------------------------------
+
+local JOINTS_R15 = {
+	"Head", "UpperTorso", "LowerTorso",
+	"LeftUpperArm", "LeftLowerArm", "LeftHand",
+	"RightUpperArm", "RightLowerArm", "RightHand",
+	"LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+	"RightUpperLeg", "RightLowerLeg", "RightFoot",
+}
+
+local SkeletonBonesR15 = {
+	{1, 2},   -- Head -> UpperTorso
+	{2, 3},   -- UpperTorso -> LowerTorso
+	{2, 4}, {4, 5}, {5, 6},       -- Left Arm
+	{2, 7}, {7, 8}, {8, 9},       -- Right Arm
+	{3, 10}, {10, 11}, {11, 12},  -- Left Leg
+	{3, 13}, {13, 14}, {14, 15},  -- Right Leg
+}
+
+local JOINTS_R6 = {
+	"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", "Right Leg",
+}
+
+local SkeletonBonesR6 = {
+	{1, 2},   -- Head -> Torso
+	{2, 3},   -- Torso -> Left Arm
+	{2, 4},   -- Torso -> Right Arm
+	{2, 5},   -- Torso -> Left Leg
+	{2, 6},   -- Torso -> Right Leg
+}
+
+--------------------------------------------------
+-- STORAGE & STATE
+--------------------------------------------------
+
+local SkeletonObjects = {}
+local Enabled = true
+local skeletonFrame = 0
+
+--------------------------------------------------
+-- DRAWING OBJECT CREATION & CLEANUP
+--------------------------------------------------
+
+local function createDrawingLine()
+	local line = Drawing.new("Line")
+	line.Thickness = 1
+	line.Color = SKELETON_CONFIG.Color
+	line.Visible = false
+	return line
+end
+
+local function createSkeletonESP(player)
+	if SkeletonObjects[player] then
+		return SkeletonObjects[player]
+	end
+
+	local object = {
+		Lines = {},
+		CachedCharacter = nil,
+		Rig = nil,
+		Parts = {},
+		Screen = {}
+	}
+
+	-- Allocate enough lines to support R15 (14 bones max)
+	for _ = 1, #SkeletonBonesR15 do
+		table.insert(object.Lines, createDrawingLine())
+	end
+
+	SkeletonObjects[player] = object
+	return object
+end
+
+local function hideSkeleton(object)
+	for _, line in ipairs(object.Lines) do
+		line.Visible = false
+	end
+end
+
+local function removeSkeletonESP(player)
+	local object = SkeletonObjects[player]
+	if not object then return end
+
+	for _, line in ipairs(object.Lines) do
+		pcall(function()
+			line:Remove()
+		end)
+	end
+
+	SkeletonObjects[player] = nil
+end
+
+--------------------------------------------------
+-- MAIN RENDER LOOP
+--------------------------------------------------
+
+local function updateSkeletonESP()
+	if not Enabled then return end
+
+	skeletonFrame += 1
+
+	local camPos = Camera.CFrame.Position
+	local viewport = Camera.ViewportSize
+	local margin = SKELETON_CONFIG.OffscreenMargin
+
+	for player, object in pairs(SkeletonObjects) do
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+
+		if not humanoid or humanoid.Health <= 0 or not root then
+			hideSkeleton(object)
+			continue
+		end
+
+		local distance = (camPos - root.Position).Magnitude
+
+		if distance > SKELETON_CONFIG.MaxDistance then
+			hideSkeleton(object)
+			continue
+		end
+
+		-- Performance optimization: Far players skip alternate frames (staggered by UserId)
+		if distance > SKELETON_CONFIG.FarDistance
+			and (skeletonFrame + player.UserId) % 2 ~= 0 then
+			continue
+		end
+
+		-- Cheap viewport bounds check on root before doing per-joint math
+		local rootScreen = Camera:WorldToViewportPoint(root.Position)
+
+		if rootScreen.Z <= 0
+			or rootScreen.X < -margin
+			or rootScreen.X > viewport.X + margin
+			or rootScreen.Y < -margin
+			or rootScreen.Y > viewport.Y + margin then
+
+			hideSkeleton(object)
+			continue
+		end
+
+		-- Reset limb cache if the character reloaded
+		if object.CachedCharacter ~= character then
+			object.CachedCharacter = character
+			object.Rig = nil
+			object.Parts = {}
+			object.Screen = {}
+		end
+
+		local isR15 = humanoid.RigType == Enum.HumanoidRigType.R15
+		local jointNames = isR15 and JOINTS_R15 or JOINTS_R6
+		local bones = isR15 and SkeletonBonesR15 or SkeletonBonesR6
+
+		if object.Rig ~= jointNames then
+			object.Rig = jointNames
+			object.Parts = {}
+		end
+
+		local parts = object.Parts
+		local screen = object.Screen
+
+		-- Cache and re-verify character joint references
+		for i = 1, #jointNames do
+			local part = parts[i]
+
+			if not part or not part.Parent then
+				part = character:FindFirstChild(jointNames[i])
+				parts[i] = part
+			end
+
+			if part then
+				local v = Camera:WorldToViewportPoint(part.Position)
+				if v.Z > 0 then
+					screen[i] = Vector2.new(v.X, v.Y)
+				else
+					screen[i] = false
+				end
+			else
+				screen[i] = false
+			end
+		end
+
+		-- Distance-based line scaling
+		local thickness = math.max(
+			1,
+			math.floor(
+				SKELETON_CONFIG.BaseThickness * math.clamp(100 / math.max(distance, 1), 0.35, 1) + 0.5
+			)
+		)
+
+		local lines = object.Lines
+
+		for index = 1, #bones do
+			local line = lines[index]
+			local bone = bones[index]
+
+			local a = screen[bone[1]]
+			local b = screen[bone[2]]
+
+			if line then
+				if a and b then
+					line.From = a
+					line.To = b
+
+					if line.Thickness ~= thickness then
+						line.Thickness = thickness
+					end
+
+					line.Visible = true
+				else
+					line.Visible = false
+				end
+			end
+		end
+
+		-- Hide unused allocated lines (e.g., when rendering R6 using an R15-sized array)
+		for index = #bones + 1, #lines do
+			lines[index].Visible = false
+		end
+	end
+end
+
+--------------------------------------------------
+-- SETUP & LISTENERS
+--------------------------------------------------
+
+local function setupPlayer(player)
+	if player == LocalPlayer then return end
+	createSkeletonESP(player)
+
+	player.CharacterAdded:Connect(function()
+		task.wait(0.15)
+		local object = SkeletonObjects[player]
+		if object then
+			object.CachedCharacter = nil
+			object.Rig = nil
+			object.Parts = {}
+			object.Screen = {}
+		end
+	end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+	setupPlayer(player)
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+Players.PlayerRemoving:Connect(removeSkeletonESP)
+
+RunService.RenderStepped:Connect(function()
+	Camera = workspace.CurrentCamera
+	if not Camera then return end
+	updateSkeletonESP()
+end)
