@@ -5,10 +5,6 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---------------------------------------------------
--- CONFIGURATION
---------------------------------------------------
-
 local HEALTH_CONFIG = {
 	Width = 5,
 	Gap = 6,
@@ -34,10 +30,6 @@ local HEALTH_CONFIG = {
 	MaxDistance = 2000,
 }
 
---------------------------------------------------
--- CORE INTERFACE & STORAGE
---------------------------------------------------
-
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "Standalone_Health_ESP"
 ScreenGui.IgnoreGuiInset = true
@@ -47,10 +39,6 @@ ScreenGui.Parent = game:GetService("CoreGui")
 
 local HealthESPObjects = {}
 local Enabled = true
-
---------------------------------------------------
--- HELPERS & BOUNDS
---------------------------------------------------
 
 local function getOutlineRotation()
 	local speed = 180 / math.max(HEALTH_CONFIG.OutlineAnimationTime, 0.05)
@@ -135,10 +123,6 @@ local function getCharacterData(player)
 		humanoid = humanoid
 	}
 end
-
---------------------------------------------------
--- HEALTH OBJECT LIFECYCLE
---------------------------------------------------
 
 local function createHealthESP(player)
 	if HealthESPObjects[player] then
@@ -255,10 +239,6 @@ local function removeHealthESP(player)
 	HealthESPObjects[player] = nil
 end
 
---------------------------------------------------
--- RENDER & UPDATES
---------------------------------------------------
-
 local function updateHealthESP(player, minX, minY, maxX, maxY, actualHealth, maxHealth, scale)
 	local object = HealthESPObjects[player]
 	if not object then return end
@@ -326,10 +306,6 @@ local function updateHealthESP(player, minX, minY, maxX, maxY, actualHealth, max
 	object.container.Visible = true
 	object.glow.Visible = HEALTH_CONFIG.GlowEnabled
 end
-
---------------------------------------------------
--- SETUP & EVENT HANDLERS
---------------------------------------------------
 
 local function setupPlayer(player)
 	if player == LocalPlayer then return end
