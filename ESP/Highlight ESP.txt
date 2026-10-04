@@ -4,10 +4,6 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---------------------------------------------------
--- CONFIGURATION
---------------------------------------------------
-
 local HIGHLIGHT_CONFIG = {
 	FillColor = Color3.fromRGB(0, 0, 0),
 	OutlineColor = Color3.fromRGB(255, 255, 255),
@@ -17,16 +13,8 @@ local HIGHLIGHT_CONFIG = {
 	MaxDistance = 2000, -- Maximum view distance (0 = infinite)
 }
 
---------------------------------------------------
--- STORAGE & STATE
---------------------------------------------------
-
 local HighlightObjects = {}
 local Enabled = true
-
---------------------------------------------------
--- HIGHLIGHT CREATION & CLEANUP
---------------------------------------------------
 
 local function createHighlightESP(player)
 	if HighlightObjects[player] then
@@ -54,10 +42,6 @@ local function removeHighlightESP(player)
 	highlight:Destroy()
 	HighlightObjects[player] = nil
 end
-
---------------------------------------------------
--- MAIN RENDER LOOP
---------------------------------------------------
 
 local function updateHighlightESP(player)
 	local highlight = HighlightObjects[player]
@@ -98,10 +82,6 @@ local function updateHighlightESP(player)
 	highlight.OutlineTransparency = HIGHLIGHT_CONFIG.OutlineTransparency
 	highlight.Enabled = true
 end
-
---------------------------------------------------
--- SETUP & LISTENERS
---------------------------------------------------
 
 local function setupPlayer(player)
 	if player == LocalPlayer then return end
