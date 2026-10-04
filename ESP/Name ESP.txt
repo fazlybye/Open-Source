@@ -4,10 +4,6 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---------------------------------------------------
--- CONFIGURATION
---------------------------------------------------
-
 local NAME_CONFIG = {
 	Font = 2, -- Drawing Font enum/index (2 = Monospace)
 
@@ -40,16 +36,8 @@ local NAME_CONFIG = {
 	UsernameGap = 1,
 }
 
---------------------------------------------------
--- STORAGE & STATE
---------------------------------------------------
-
 local NameObjects = {}
 local Enabled = true
-
---------------------------------------------------
--- DRAWING HELPERS
---------------------------------------------------
 
 local function createDrawingText()
 	local text = Drawing.new("Text")
@@ -93,10 +81,6 @@ local function removeNameESP(player)
 	NameObjects[player] = nil
 end
 
---------------------------------------------------
--- BOUNDS & CALCULATIONS
---------------------------------------------------
-
 local function getBounds(character)
 	local cf, size = character:GetBoundingBox()
 	local half = size / 2
@@ -139,10 +123,6 @@ local function getBounds(character)
 
 	return minX, minY, maxX, maxY
 end
-
---------------------------------------------------
--- MAIN RENDER LOOP
---------------------------------------------------
 
 local function updateNameESP(player)
 	local object = NameObjects[player]
@@ -250,10 +230,6 @@ local function updateNameESP(player)
 		usernameY
 	)
 end
-
---------------------------------------------------
--- SETUP & LISTENERS
---------------------------------------------------
 
 local function setupPlayer(player)
 	if player == LocalPlayer then return end
