@@ -4,10 +4,6 @@ local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
---------------------------------------------------
--- CONFIGURATION
---------------------------------------------------
-
 local SKELETON_CONFIG = {
 	Color = Color3.fromRGB(255, 255, 255),
 	MaxDistance = 1500,     -- Hide skeleton completely past this distance
@@ -15,10 +11,6 @@ local SKELETON_CONFIG = {
 	OffscreenMargin = 250,  -- Bounding padding before culling offscreen renders
 	BaseThickness = 1.5,
 }
-
---------------------------------------------------
--- RIG STRUCTURE DEFINITIONS
---------------------------------------------------
 
 local JOINTS_R15 = {
 	"Head", "UpperTorso", "LowerTorso",
@@ -49,17 +41,9 @@ local SkeletonBonesR6 = {
 	{2, 6},   -- Torso -> Right Leg
 }
 
---------------------------------------------------
--- STORAGE & STATE
---------------------------------------------------
-
 local SkeletonObjects = {}
 local Enabled = true
 local skeletonFrame = 0
-
---------------------------------------------------
--- DRAWING OBJECT CREATION & CLEANUP
---------------------------------------------------
 
 local function createDrawingLine()
 	local line = Drawing.new("Line")
@@ -109,10 +93,6 @@ local function removeSkeletonESP(player)
 
 	SkeletonObjects[player] = nil
 end
-
---------------------------------------------------
--- MAIN RENDER LOOP
---------------------------------------------------
 
 local function updateSkeletonESP()
 	if not Enabled then return end
@@ -239,10 +219,6 @@ local function updateSkeletonESP()
 		end
 	end
 end
-
---------------------------------------------------
--- SETUP & LISTENERS
---------------------------------------------------
 
 local function setupPlayer(player)
 	if player == LocalPlayer then return end
